@@ -50,6 +50,7 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+package-lock.json
 
 # Optional eslint cache
 .eslintcache
@@ -144,3 +145,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
+
+# Local content: decks, uploaded media and exported presentations
+data/
+exports/

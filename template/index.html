@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<!--
+  CAI Slide Template — hand-written HTML version (16:9, 1600×900 canvas, auto-scaled)
+
+  Usage
+  - A slide:      <section class="slide"><h2>Frame Title</h2> ... </section>
+                  The <h2> becomes the blue title bar with CAI logo and progress bar.
+                  Content is centred vertically; use <div class="content top">…</div> to align it to the top.
+  - Section:      <div class="section" data-title="Section 1 Title Name" data-toc="Section ToC Name 1"></div>
+                  → generates an outline slide highlighting the current section (like \AtBeginSection).
+                  Optional data-outline-title="Agenda" changes that outline slide's heading.
+  - Subsection:   <div class="subsection" data-title="Subsection 1 Title Name" data-toc="Subsection ToC Name 1"></div>
+                  → generates a section/subsection divider slide.
+  - Unnumbered:   add class "appendix" to a slide (or data-appendix to a section/subsection marker):
+                  no page number, no progress bar, and the other slides are numbered without it.
+                  A bare <div class="appendix"></div> makes every following slide unnumbered (like \appendix).
+  - Footer text:  <main class="deck" data-footer="Author – Title">
+  - Step by step: class="fragment" on any element (like \pause)
+  - Components:   .columns > .col, .block(.example/.alert), figure + figcaption ("Source: …"),
+                  ol.circled, table (booktabs style), pre/code, $…$ maths (KaTeX), .slide.standout
+
+  Keys: ←/→/Space navigate · Home/End · O overview · F full screen · Shift+P print / save as PDF
+  PDF:  print from Chrome with margins "None" and "Background graphics" on; each page is 16:9.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAI Slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Mono&family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="cai-slides.css">
+</head>
+<body>
+<main class="deck" data-footer="Author&nbsp;&nbsp;–&nbsp;&nbsp;Title">
+
+  <!-- ===================== Title page ===================== -->
+  <section class="slide title-slide">
+    <div class="title-graphic">
+      <img src="figures/cai_logo_light.svg" alt="CAI">
+      <img src="figures/USTUTT_logo.svg" alt="University of Stuttgart">
+    </div>
+    <h1>Title</h1>
+    <p class="subtitle">Subtitle</p>
+    <div class="separator"></div>
+    <p class="author">Author</p>
+    <p class="date" data-today></p>
+    <p class="institute">
+      Collaborative Artificial Intelligence Group, University of Stuttgart<br>
+      <a class="ext" href="https://www.collaborative-ai.org/" target="_blank">www.collaborative-ai.org</a>
+    </p>
+  </section>
+
+  <!-- ===================== Section 1 ===================== -->
+  <div class="section" data-title="Section 1 Title Name" data-toc="Section ToC Name 1"></div>
+
+  <section class="slide">
+    <h2>Frame Title</h2>
+    <ul>
+      <li>item 1</li>
+      <li>item 2
+        <ul><li>nested item</li><li>another nested item</li></ul>
+      </li>
+      <li>item 3 with a citation <cite>[Author et al., 2024]</cite></li>
+    </ul>
+  </section>
+
+  <div class="subsection" data-title="Subsection 1 Title Name" data-toc="Subsection ToC Name 1"></div>
+
+  <section class="slide">
+    <h2>Two Columns &amp; Figure</h2>
+    <div class="columns c">
+      <div class="col">
+        <ol class="circled">
+          <li>First step</li>
+          <li>Second step</li>
+          <li>Third step</li>
+        </ol>
+        <p class="small muted">Use <code>ol.circled</code> for <code>\circled{n}</code> numbering.</p>
+      </div>
+      <div class="col">
+        <figure>
+          <div class="placeholder">&lt;img src="figures/…"&gt;</div>
+          <figcaption>Author et al. (2024)</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <div class="subsection" data-title="Subsection 2 Title Name" data-toc="Subsection ToC Name 2"></div>
+
+  <section class="slide">
+    <h2>Step-by-step Reveal</h2>
+    <ul>
+      <li>Always visible</li>
+      <li class="fragment">Appears on next key press (like <code>\pause</code>)</li>
+      <li class="fragment">Then this one</li>
+    </ul>
+    <p class="fragment alert">Alerted text, e.g. a key takeaway.</p>
+  </section>
+
+  <div class="subsection" data-title="Subsection 3 Title Name" data-toc="Subsection ToC Name 3"></div>
+
+  <section class="slide">
+    <h2>Math &amp; Code</h2>
+    <div class="columns">
+      <div class="col">
+        <p>Inline math $f(\mathbf{x}) = \sigma(\mathbf{w}^\top \mathbf{x} + b)$ and display:</p>
+        <p>$$\mathcal{L}(\theta) = -\sum_{i=1}^{N} \log p_\theta(y_i \mid x_i)$$</p>
+      </div>
+      <div class="col">
+<pre><code>def train(model, data):
+    for x, y in data:
+        loss = model.step(x, y)
+    return loss</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Section 2 ===================== -->
+  <div class="section" data-title="Section 2 Title Name" data-toc="Section ToC Name 2"></div>
+
+  <section class="slide">
+    <h2>Blocks</h2>
+    <div class="block">
+      <div class="block-title">Block Title</div>
+      <div class="block-body">Block contents</div>
+    </div>
+    <div class="block example">
+      <div class="block-title">Example Block</div>
+      <div class="block-body">PUI blue title on light-blue body</div>
+    </div>
+    <div class="block alert">
+      <div class="block-title">Alert Block</div>
+      <div class="block-body">Something to watch out for</div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>Table</h2>
+    <table>
+      <thead><tr><th>Method</th><th class="num">Accuracy</th><th class="num">F1</th><th class="num">Time (s)</th></tr></thead>
+      <tbody>
+        <tr><td>Baseline</td><td class="num">0.812</td><td class="num">0.790</td><td class="num">12.4</td></tr>
+        <tr><td>Variant A</td><td class="num">0.845</td><td class="num">0.821</td><td class="num">15.1</td></tr>
+        <tr class="hl"><td><strong>Ours</strong></td><td class="num"><strong>0.872</strong></td><td class="num"><strong>0.856</strong></td><td class="num">13.0</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="slide">
+    <h2>References</h2>
+    <div class="content top references">
+      <p>A. Author, B. Author, and C. Author. Title of the paper. In <em>Proceedings of the Conference</em>, pages 1–10, 2024.</p>
+      <p>D. Author. Title of the book. Publisher, 2023.</p>
+      <p>E. Author and F. Author. Title of the journal article. <em>Journal Name</em>, 12(3):45–67, 2022.</p>
+    </div>
+  </section>
+
+  <!-- ===================== Unnumbered slides ===================== -->
+  <section class="slide standout appendix">
+    <div>Thank you!<br>Any Questions?</div>
+  </section>
+
+  <section class="slide appendix">
+    <h2>Backup slides</h2>
+    <p>Sometimes, it is useful to add slides at the end of your presentation to refer to during audience questions.</p>
+    <p>Slides with class <code>appendix</code> have no page number and no progress bar.</p>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script src="cai-slides.js"></script>
+<script>
+  if (window.renderMathInElement) renderMathInElement(document.body, {
+    delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }],
+    throwOnError: false
+  });
+</script>
+</body>
+</html>
