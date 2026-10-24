@@ -149,3 +149,4 @@ vite.config.ts.timestamp-*
 # Local content: decks, uploaded media and exported presentations
 data/
 exports/
+_site/

@@ -1,4 +1,4 @@
-/* Editor chrome. The slide itself is styled by /template/cai-slides.css. */
+/* Editor chrome. The slide itself is styled by template/cai-slides.css. */
 :root {
   --ui-bg: #F4F5F7;
   --ui-panel: #FFFFFF;
@@ -9,6 +9,7 @@
   --ui-primary: #004191;
   --ui-hover: #EAF1F7;
 }
+[hidden] { display: none !important; }
 html, body.ed {
   background: var(--ui-bg);
   overflow: hidden;
@@ -45,8 +46,12 @@ body.ed { display: flex; flex-direction: column; height: 100vh; }
 .tb.primary:hover { background: #00346f; }
 #deckSel { height: 32px; border: 1px solid var(--ui-line); border-radius: 6px; padding: 0 6px; background: #fff; max-width: 160px; }
 .fmt.disabled { opacity: .35; pointer-events: none; }
-.status { color: var(--ui-muted); font-size: 13px; margin-right: 6px; }
+.status { color: var(--ui-muted); font-size: 13px; margin-right: 6px; white-space: nowrap; }
 .status.err { color: #C0392B; }
+.mode-badge {
+  font-size: 12px; color: #8a5a00; background: #fff4d6; border: 1px solid #f0d58c;
+  border-radius: 10px; padding: 2px 8px; margin-right: 6px; cursor: help; white-space: nowrap;
+}
 .tb.lang { border-color: var(--ui-line); font-size: 13px; }
 
 /* Colour picker (text panel) */
@@ -253,6 +258,8 @@ html[lang="en"] .stage [data-field]:empty::before { content: "(empty)"; }
   background: #fff; cursor: pointer; font-size: 13px;
 }
 .pbtn:hover { background: var(--ui-hover); }
+.pbtn.danger { color: #C0392B; }
+.pbtn.danger:hover { background: #fdecea; border-color: #e6a39b; }
 /* sub-section inside a panel group (e.g. element layer order) */
 .psub { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--ui-line); }
 .psub .chk { margin: 0; }

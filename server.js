@@ -86,11 +86,6 @@ function assetPath(rel) {
   if (rel.startsWith('media/')) return inside(MEDIA, rel.slice(6));
   return inside(TPL, rel);
 }
-// figures/… and media/… paths a page references (data-logo is the title-bar
-// logo, which the runtime inserts later)
-const ASSET_REF = /(src|href|data-logo)="((?:figures|media)\/[^"]+)"/g;
-const assetRefs = html => [...new Set([...html.matchAll(ASSET_REF)].map(m => m[2]))];
-
 async function exportFolder(name) {
   const deck = await loadDeck(name);
   const html = R.pageHTML(deck);
@@ -98,7 +93,7 @@ async function exportFolder(name) {
   const stamp = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
   const dir = path.join(EXPORTS, `${name}-${stamp}`);
   // the runtime plus every logo / media file the page references
-  for (const rel of ['cai-slides.css', 'cai-slides.js', ...assetRefs(html)]) {
+  for (const rel of ['cai-slides.css', 'cai-slides.js', ...R.assetRefs(html)]) {
     const src = assetPath(rel);
     if (!src) continue;
     await fsp.mkdir(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -108,27 +103,13 @@ async function exportFolder(name) {
   return dir;
 }
 
-async function exportSingle(name) {
-  const deck = await loadDeck(name);
-  const css = await fsp.readFile(path.join(TPL, 'cai-slides.css'), 'utf8');
-  const js = await fsp.readFile(path.join(TPL, 'cai-slides.js'), 'utf8');
-  const html = R.pageHTML(deck, { css, js });
-  const inlined = {};
-  for (const rel of assetRefs(html)) {
-    const file = assetPath(rel);
-    if (!file) continue;
-    try { inlined[rel] = `data:${mimeOf(file)};base64,` + (await fsp.readFile(file)).toString('base64'); } catch {}
-  }
-  return html.replace(ASSET_REF, (m, a, rel) => inlined[rel] ? `${a}="${inlined[rel]}"` : m);
-}
-
 async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = decodeURIComponent(url.pathname);
   let m;
 
-  // every /api/deck/<name>, /api/export/<name>… and /preview/<name>… route
-  const deckRoute = /^\/(?:api\/deck|api\/export|preview)\/([^/]+)/.exec(p);
+  // every /api/deck/<name> and /api/export/<name> route
+  const deckRoute = /^\/api\/(?:deck|export)\/([^/]+)/.exec(p);
   if (deckRoute && !NAME_RE.test(deckRoute[1])) return json(res, { error: 'Invalid deck name' }, 400);
 
   // ---- API ----
@@ -147,41 +128,33 @@ async function handle(req, res) {
       await fsp.rename(tmp, deckFile(name));
       return json(res, { ok: true });
     }
+    if (req.method === 'DELETE') {
+      await fsp.unlink(deckFile(name)).catch(() => {});
+      return json(res, { ok: true });
+    }
   }
   if (p === '/api/upload' && req.method === 'POST') {
     const orig = decodeURIComponent(req.headers['x-filename'] || 'file');
     const ext = path.extname(orig).toLowerCase().replace(/[^.\w]/g, '') || '.bin';
     const base = path.basename(orig, path.extname(orig)).replace(/[^\w\-]+/g, '_').slice(0, 40) || 'file';
-    const fname = `${base}-${crypto.randomBytes(3).toString('hex')}${ext}`;
+    // names that already carry a suffix (from an export) are kept when free
+    const fname = /-[0-9a-f]{6}$/.test(base) && !fs.existsSync(path.join(MEDIA, base + ext))
+      ? base + ext : `${base}-${crypto.randomBytes(3).toString('hex')}${ext}`;
     const out = fs.createWriteStream(path.join(MEDIA, fname));
     req.pipe(out);
     out.on('finish', () => json(res, { src: 'media/' + fname }));
     out.on('error', e => json(res, { error: e.message }, 500));
     return;
   }
-  if ((m = /^\/api\/export\/([^/]+)(\/single)?$/.exec(p))) {
-    const name = m[1];
-    if (m[2]) {
-      const html = await exportSingle(name);
-      return send(res, 200, html, MIME['.html'], {
-        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(name)}.html`
-      });
-    }
-    if (req.method === 'POST') return json(res, { dir: await exportFolder(name) });
+  if ((m = /^\/api\/export\/([^/]+)$/.exec(p)) && req.method === 'POST') {
+    return json(res, { dir: await exportFolder(m[1]) });
   }
 
-  // ---- Live preview: /preview/<deck>/ ----
-  if ((m = /^\/preview\/([^/]+)\/(.*)$/.exec(p))) {
-    const [, name, rest] = m;
-    if (rest === '' || rest === 'index.html') return send(res, 200, R.pageHTML(await loadDeck(name)), MIME['.html']);
-    const file = assetPath(rest);
-    return file ? sendFile(req, res, file) : send(res, 404, 'Not found');
+  // ---- Static (editor pages get versioned script / style links) ----
+  const file = staticFile(p === '/' ? '/index.html' : p);
+  if (file && file.startsWith(PUB + path.sep) && file.endsWith('.html')) {
+    return send(res, 200, await versioned(file), MIME['.html']);
   }
-  if ((m = /^\/preview\/([^/]+)$/.exec(p))) return send(res, 302, '', 'text/plain', { Location: p + '/' + url.search });
-
-  // ---- Static ----
-  if (p === '/' || p === '/index.html') return send(res, 200, await editorPage(), MIME['.html']);
-  const file = staticFile(p);
   return file ? sendFile(req, res, file) : send(res, 404, 'Not found');
 }
 
@@ -193,18 +166,18 @@ function staticFile(p) {
   return inside(PUB, p.slice(1));
 }
 
-// Editor page with ?v=<mtime> on its scripts/styles, so a reload never mixes
+// Page with ?v=<mtime> on its local scripts/styles, so a reload never mixes
 // an old cached file with a new one (e.g. editor.js and i18n.js out of sync)
-async function editorPage() {
-  const html = await fsp.readFile(path.join(PUB, 'index.html'), 'utf8');
-  const refs = [...new Set([...html.matchAll(/(?:src|href)="(\/[^"?]+\.(?:js|css))"/g)].map(m => m[1]))];
+async function versioned(page) {
+  const html = await fsp.readFile(page, 'utf8');
   const ver = {};
-  for (const r of refs) {
-    const f = staticFile(r);
+  for (const r of new Set([...html.matchAll(LOCAL_REF)].map(m => m[2]))) {
+    const f = staticFile('/' + r);
     ver[r] = f ? await fsp.stat(f).then(s => Math.round(s.mtimeMs).toString(36), () => '') : '';
   }
-  return html.replace(/((?:src|href)=")(\/[^"?]+\.(?:js|css))"/g, (m, a, r) => ver[r] ? `${a}${r}?v=${ver[r]}"` : m);
+  return html.replace(LOCAL_REF, (m, a, r) => ver[r] ? `${a}${r}?v=${ver[r]}"` : m);
 }
+const LOCAL_REF = /((?:src|href)=")([\w\-/]+\.(?:js|css))"/g;
 
 const server = http.createServer((req, res) => {
   handle(req, res).catch(e => {

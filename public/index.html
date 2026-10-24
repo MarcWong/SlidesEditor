@@ -6,16 +6,23 @@
 <title>CAI Slides Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Mono&family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap">
-<link rel="stylesheet" href="/template/cai-slides.css">
-<link rel="stylesheet" href="/editor.css">
+<link rel="stylesheet" href="template/cai-slides.css">
+<link rel="stylesheet" href="editor.css">
 </head>
 <body class="ed">
 
 <header class="topbar">
-  <div class="brand"><img src="/figures/cai_logo_small_light.svg" alt=""><span>Slides</span></div>
+  <div class="brand"><img src="figures/cai_logo_small_light.svg" alt=""><span>Slides</span></div>
   <div class="tgroup">
     <select id="deckSel" title="切换演示文稿"></select>
     <button class="tb" id="newDeck" title="新建演示文稿">新建</button>
+    <div class="menu">
+      <button class="tb" data-menu title="导入已有项目">导入 ▾</button>
+      <div class="menu-pop">
+        <button data-import="files">从文件导入（ZIP / HTML / JSON）…</button>
+        <button data-import="folder">从文件夹导入…</button>
+      </div>
+    </div>
   </div>
   <div class="sep"></div>
   <div class="tgroup">
@@ -54,6 +61,7 @@
   </div>
   <div class="spacer"></div>
   <span id="status" class="status"></span>
+  <span id="modeBadge" class="mode-badge" hidden title="未连接服务器：内容保存在此浏览器中。换电脑或清除网站数据前，请导出 ZIP 备份。">浏览器存储</span>
   <div class="menu" id="langMenu">
     <button class="tb lang" data-menu title="切换语言"><span id="langLabel"></span> ▾</button>
     <div class="menu-pop right">
@@ -65,8 +73,9 @@
   <div class="menu">
     <button class="tb primary" data-menu>导出 ▾</button>
     <div class="menu-pop right">
-      <button data-export="folder">导出为文件夹（exports/）</button>
+      <button data-export="zip">下载 ZIP（可再次导入）</button>
       <button data-export="single">下载单文件 HTML（媒体内嵌）</button>
+      <button data-export="folder" hidden>导出为文件夹（exports/）</button>
     </div>
   </div>
 </header>
@@ -101,9 +110,11 @@
 <input type="file" id="fileInput" hidden multiple>
 <div id="toast" class="toast"></div>
 
-<script src="/template/cai-slides.js"></script>
-<script src="/shared/render.js"></script>
-<script src="/i18n.js"></script>
-<script src="/editor.js"></script>
+<script src="template/cai-slides.js"></script>
+<script src="shared/render.js"></script>
+<script src="store.js"></script>
+<script src="io.js"></script>
+<script src="i18n.js"></script>
+<script src="editor.js"></script>
 </body>
 </html>

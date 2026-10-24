@@ -1,5 +1,5 @@
-/* Deck JSON → template markup. Shared by the server (preview/export) and the
-   editor (which decorates the markup with CAISlides.build). */
+/* Deck JSON → template markup. Shared by the server (export) and the browser
+   (editor, preview, import / export). */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.CAIRender = factory();
@@ -92,12 +92,36 @@
     return `data-footer="${esc(d.footer)}" data-outline-title="${esc(d.outlineTitle)}" data-logo="${esc(d.logo)}"`;
   }
 
-  // Full standalone page. opt.css / opt.js inline the runtime instead of linking it.
+  // figures/… and media/… paths a page references (data-logo is the title-bar
+  // logo, which the runtime inserts later)
+  const ASSET_REF = /(src|href|data-logo)="((?:figures|media)\/[^"]+)"/g;
+  const assetRefs = html => [...new Set([...html.matchAll(ASSET_REF)].map(m => m[2]))];
+  // Replace each referenced asset path with map(path), where it returns a value
+  const mapAssets = (html, map) => html.replace(ASSET_REF, (m, a, rel) => {
+    const to = map(rel);
+    return to ? `${a}="${to}"` : m;
+  });
+
+  // The deck JSON travels inside every page, so an export can be imported again
+  const DECK_JSON = /<script type="application\/json" id="cai-deck">([\s\S]*?)<\/script>/;
+  function embeddedDeck(html) {
+    const m = DECK_JSON.exec(html);
+    if (!m) return null;
+    try {
+      const d = JSON.parse(m[1]);
+      return d && Array.isArray(d.slides) ? d : null;
+    } catch { return null; }
+  }
+
+  // Full standalone page. opt.css / opt.js inline the runtime instead of linking
+  // it; opt.base is the folder that holds cai-slides.css/js when linked.
   function pageHTML(deck, opt) {
     opt = opt || {};
     const m = deck.meta || {};
-    const css = opt.css ? `<style>\n${opt.css}\n</style>` : '<link rel="stylesheet" href="cai-slides.css">';
-    const js = opt.js ? `<script>\n${opt.js}\n<\/script>` : '<script src="cai-slides.js"><\/script>';
+    const base = opt.base || '';
+    const css = opt.css ? `<style>\n${opt.css}\n</style>` : `<link rel="stylesheet" href="${base}cai-slides.css">`;
+    const js = opt.js ? `<script>\n${opt.js}\n<\/script>` : `<script src="${base}cai-slides.js"><\/script>`;
+    const data = JSON.stringify(deck).replace(/</g, '\\u003c');
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -112,6 +136,7 @@ ${css}
 <body>
 <main class="deck" ${deckAttrs(deck)}>
 ${deckMarkup(deck, false)}</main>
+<script type="application/json" id="cai-deck">${data}<\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"><\/script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"><\/script>
 ${js}
@@ -178,5 +203,8 @@ ${js}
     };
   }
 
-  return { esc, uid, normalize, elementHTML, slideHTML, deckMarkup, deckData, pageHTML, newSlide, textEl, defaultDeck };
+  return {
+    esc, uid, normalize, elementHTML, slideHTML, deckMarkup, deckData, pageHTML, newSlide, textEl, defaultDeck,
+    assetRefs, mapAssets, embeddedDeck
+  };
 });

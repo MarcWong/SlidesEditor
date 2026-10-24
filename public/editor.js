@@ -4,8 +4,10 @@
   const W = 1600, H = 900, HEADER = 103, FOOT = 850;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const IO = window.CAIIO;
   const deckName = new URLSearchParams(location.search).get('deck') || 'default';
-  const deckPath = encodeURIComponent(deckName);
+  const openDeck = name => { location.search = '?deck=' + encodeURIComponent(name); };
+  let Store;   // set at boot: the server's data/ folder or this browser's storage (store.js)
 
   const stage = $('#stage'), area = $('#canvasArea'), thumbs = $('#thumbs'), panel = $('#panel');
   let deck, cur = 0, selId = null, scale = 1, slidesDom = [];
@@ -37,13 +39,6 @@
     window.addEventListener('pointerup', up);
   }
 
-  async function api(url, opt) {
-    const r = await fetch(url, opt);
-    const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body.error || r.statusText);
-    return body;
-  }
-
   let toastTimer;
   function toast(msg, ms = 2600) {
     const t = $('#toast');
@@ -67,9 +62,7 @@
   async function save() {
     clearTimeout(saveTimer);
     try {
-      await api('/api/deck/' + deckPath, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(deck)
-      });
+      await Store.save(deckName, deck);
       dirty = false; showSaveState();
     } catch (e) { status(t('保存失败：') + e.message, true); }
   }
@@ -116,7 +109,7 @@
     root.className = 'deck';
     root.setAttribute('data-manual', '');
     Object.assign(root.dataset, R.deckData(deck));
-    root.innerHTML = R.deckMarkup(deck, true);
+    root.innerHTML = CAIStore.withMedia(Store, R.deckMarkup(deck, true));
     slidesDom = CAISlides.build(root);
     renderThumbs();
     renderCanvas();
@@ -424,13 +417,12 @@
 
   async function upload(file) {
     status(`${t('上传')} ${file.name}…`);
-    const r = await api('/api/upload', {
-      method: 'POST', headers: { 'X-Filename': encodeURIComponent(file.name) }, body: file
-    });
+    const src = await Store.upload(file);
     status(t('已上传'));
-    return r.src;
+    return src;
   }
   function mediaSize(src, type) {
+    src = Store.url(src);
     return new Promise(res => {
       const done = (w, h) => res(w && h ? [w, h] : (type === 'video' ? [1280, 720] : [800, 600]));
       if (type === 'image') {
@@ -475,10 +467,10 @@
       } catch (e) { status(t('上传失败：') + e.message, true); }
     }
   }
-  function pickFiles(accept, multiple) {
+  function pickFiles(accept, multiple, folder = false) {
     return new Promise(res => {
       const inp = $('#fileInput');
-      inp.accept = accept; inp.multiple = multiple; inp.value = '';
+      inp.accept = accept; inp.multiple = multiple; inp.webkitdirectory = folder; inp.value = '';
       inp.onchange = () => res([...inp.files]);
       inp.click();
     });
@@ -677,7 +669,8 @@
     const m = deck.meta;
     return group('deck', '演示文稿', R.esc(deckName),
       `<div class="row"><label>页脚</label><input type="text" data-bind="meta.footer" value="${val(m.footer)}"></div>
-      <div class="row"><label>网页标题</label><input type="text" data-bind="meta.docTitle" value="${val(m.docTitle)}"></div>`);
+      <div class="row"><label>网页标题</label><input type="text" data-bind="meta.docTitle" value="${val(m.docTitle)}"></div>
+      <div class="btns"><button class="pbtn danger" data-act="deleteDeck">删除此演示文稿</button></div>`);
   }
 
   function keysPanel() {
@@ -740,6 +733,7 @@
       case 'naturalRatio':
         return mediaSize(el.src, el.type).then(([nw, nh]) => change(() => { el.h = Math.round(el.w * nh / nw); }));
       case 'clearBg': return el && el.bg && change(() => { delete el.bg; });
+      case 'deleteDeck': return deleteDeck();
     }
   });
 
@@ -948,6 +942,7 @@
       }
     }
     if (b.dataset.export) return doExport(b.dataset.export);
+    if (b.dataset.import) return importProject(await pickFiles('.zip,.html,.htm,.json,image/*,video/*', true, b.dataset.import === 'folder'));
     if (b.dataset.lang) return setLang(b.dataset.lang);
   });
   $('.sidebar .menu').addEventListener('click', e => {
@@ -966,18 +961,20 @@
   $('#previewBtn').onclick = async () => {
     const w = window.open('about:blank', '_blank');
     await flushAndSave();
-    w.location = `/preview/${deckPath}/#${cur + 1}`;
+    w.location = `preview.html?deck=${encodeURIComponent(deckName)}#${cur + 1}`;
   };
   async function doExport(kind) {
     await flushAndSave();
-    if (kind === 'single') {
-      location.href = `/api/export/${deckPath}/single`;
-      return;
-    }
+    status(t('正在导出…'));
     try {
-      const r = await api(`/api/export/${deckPath}`, { method: 'POST' });
-      toast(t('已导出到：') + r.dir, 6000);
-    } catch (e) { toast(t('导出失败：') + e.message); }
+      if (kind === 'folder') {         // server only: writes exports/<deck>-<time>/
+        const r = await fetch('api/export/' + encodeURIComponent(deckName), { method: 'POST' });
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || r.statusText);
+        toast(t('已导出到：') + body.dir, 6000);
+      } else await (kind === 'zip' ? IO.exportZip : IO.exportSingle)(Store, deckName, deck);
+      showSaveState();
+    } catch (e) { status(t('导出失败：') + e.message, true); }
   }
 
   /* ================= Keyboard / clipboard / drop ================= */
@@ -1056,7 +1053,9 @@
     dragDepth = 0; area.classList.remove('dragging');
     const r = stage.getBoundingClientRect();
     const at = { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
-    insertFiles([...e.dataTransfer.files], at);
+    const files = [...e.dataTransfer.files];
+    if (files.some(IO.isProjectFile)) importProject(files);
+    else insertFiles(files, at);
   });
   // stop the browser from opening files dropped elsewhere
   window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
@@ -1064,9 +1063,9 @@
 
   /* ================= Decks ================= */
   const NAME_RE = /^[\w\-一-鿿]{1,64}$/;
-  // Fill the deck dropdown; returns whether the current deck already existed on disk
+  // Fill the deck dropdown; returns whether the current deck was already stored
   async function loadDeckList() {
-    const names = await api('/api/decks');
+    const names = await Store.list();
     const existed = names.includes(deckName);
     if (!existed) names.push(deckName);
     $('#deckSel').innerHTML = names.sort().map(n =>
@@ -1075,15 +1074,59 @@
   }
   $('#deckSel').onchange = async e => {
     await flushAndSave();
-    location.search = '?deck=' + encodeURIComponent(e.target.value);
+    openDeck(e.target.value);
   };
   $('#newDeck').onclick = async () => {
     const name = (prompt(t('新演示文稿名称（字母、数字、中文、- 或 _）')) || '').trim();
     if (!name) return;
     if (!NAME_RE.test(name)) return toast(t('名称只能包含字母、数字、中文、- 或 _'));
     await flushAndSave();
-    location.search = '?deck=' + encodeURIComponent(name);
+    openDeck(name);
   };
+  async function deleteDeck() {
+    if (!confirm(t('删除演示文稿 “{name}”？此操作无法撤销。').replace('{name}', deckName))) return;
+    clearTimeout(saveTimer); dirty = false;
+    await Store.remove(deckName);
+    const rest = await Store.list();
+    openDeck(rest[0] || 'default');
+  }
+
+  /* ================= Import ================= */
+  // Decks found in the files are added under free names, with their media uploaded
+  async function importProject(files) {
+    if (!files.length) return;
+    status(t('正在导入…'));
+    let found;
+    try { found = await IO.readProject(files); } catch (e) { return status(t('导入失败：') + e.message, true); }
+    if (!found.length) { showSaveState(); return toast(t('未找到可导入的演示文稿（ZIP / HTML 导出或 JSON）'), 5000); }
+    await flushAndSave();
+    const taken = new Set(await Store.list());
+    const names = [];
+    let missing = 0;
+    try {
+      for (const { name, deck: d, media } of found) {
+        const stored = new Map();   // file name → new media/… path
+        for (const el of d.slides.flatMap(s => s.elements || [])) {
+          if (typeof el.src !== 'string' || !el.src.startsWith('media/')) continue;
+          const file = IO.baseName(el.src), blob = media.get(file);
+          if (!blob) { missing++; continue; }
+          if (!stored.has(file)) {
+            stored.set(file, await Store.upload(new File([blob], file, { type: blob.type || IO.MIME[IO.ext(file)] || '' })));
+          }
+          el.src = stored.get(file);
+        }
+        let n = name.replace(/[^\w\-一-鿿]+/g, '_').slice(0, 60) || 'deck';
+        for (let i = 2; taken.has(n); i++) n = `${name.slice(0, 60)}-${i}`.replace(/[^\w\-一-鿿]+/g, '_');
+        taken.add(n); names.push(n);
+        await Store.save(n, R.normalize(d));
+      }
+    } catch (e) { return status(t('导入失败：') + e.message, true); }
+    let msg = t('已导入：') + names.join(', ');
+    if (missing) msg += ` · ${t('缺少媒体文件：')}${missing}`;
+    try { sessionStorage.setItem(FLASH, msg); } catch {}
+    openDeck(names[0]);
+  }
+  const FLASH = 'cai-editor-flash';   // message shown after the page reloads
 
   /* ================= Language ================= */
   function renderLang() {
@@ -1102,12 +1145,18 @@
   /* ================= Boot ================= */
   (async () => {
     try {
-      deck = await api('/api/deck/' + deckPath);
+      Store = await CAIStore.ready;
+      $('#modeBadge').hidden = Store.mode !== 'local';
+      $('[data-export="folder"]').hidden = Store.mode !== 'server';
+      deck = (await Store.load(deckName)) || R.defaultDeck();
       deck.meta = deck.meta || {};
       refresh();
       fitStage();
       if (await loadDeckList()) showSaveState();
       else save();                            // persist a freshly created deck
+      let flash = null;
+      try { flash = sessionStorage.getItem(FLASH); sessionStorage.removeItem(FLASH); } catch {}
+      if (flash) toast(flash, 6000);
     } catch (e) {
       status(t('加载失败：') + e.message, true);
     }

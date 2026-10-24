@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAI Slides</title>
+<style>html, body { margin: 0; height: 100%; background: #000; }</style>
+</head>
+<body>
+<!-- Presents preview.html?deck=<name>#<slide>: writes the same page an export
+     contains, with the runtime from template/ and media from the deck's storage -->
+<script src="shared/render.js"></script>
+<script src="store.js"></script>
+<script>
+(async () => {
+  const name = new URLSearchParams(location.search).get('deck') || 'default';
+  const Store = await CAIStore.ready;
+  const deck = (await Store.load(name)) || CAIRender.defaultDeck();
+  const html = CAIStore.withMedia(Store, CAIRender.pageHTML(deck, { base: 'template/' }));
+  document.open();
+  document.write(html);
+  document.close();
+})();
+</script>
+</body>
+</html>

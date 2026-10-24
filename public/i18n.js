@@ -20,6 +20,12 @@
     '导出 ▾': 'Export ▾', '导出为文件夹（exports/）': 'Export as folder (exports/)',
     '下载单文件 HTML（媒体内嵌）': 'Download single HTML (media inlined)',
     '切换语言': 'Switch language',
+    '导入已有项目': 'Import an existing project', '导入 ▾': 'Import ▾',
+    '从文件导入（ZIP / HTML / JSON）…': 'From files (ZIP / HTML / JSON)…', '从文件夹导入…': 'From a folder…',
+    '下载 ZIP（可再次导入）': 'Download ZIP (can be imported again)',
+    '浏览器存储': 'Browser storage',
+    '未连接服务器：内容保存在此浏览器中。换电脑或清除网站数据前，请导出 ZIP 备份。':
+      'No server: your work is stored in this browser. Download a ZIP as a backup before switching computers or clearing site data.',
     // sidebar
     '幻灯片': 'Slides', '＋ 新建页 ▾': '＋ New slide ▾',
     '内容页': 'Content', '章节页': 'Section', '小节页': 'Subsection',
@@ -55,7 +61,7 @@
       'Click the text on the canvas to edit it. Leave the date empty to show today’s date.',
     '此页不编号': 'Unnumbered',
     // deck panel
-    '演示文稿': 'Deck', '页脚': 'Footer', '网页标题': 'Page title',
+    '演示文稿': 'Deck', '页脚': 'Footer', '网页标题': 'Page title', '删除此演示文稿': 'Delete this deck',
     '快捷键': 'Shortcuts', '双击': 'Double-click', '编辑文本 / 替换图片': 'Edit text / replace media',
     '删除元素': 'Delete element', '方向键': 'Arrow keys',
     '微移（⇧ ×10）；未选中时切换页': 'Nudge (⇧ ×10); change slide when nothing is selected',
@@ -72,7 +78,10 @@
       'Section / subsection slides can’t hold elements; this slide’s elements will be removed. Continue?',
     '至少保留一页': 'A deck needs at least one slide',
     '链接地址': 'Link URL', '文件网址（https://…）': 'File URL (https://…)',
-    '已复制元素': 'Element copied', '已导出到：': 'Exported to: ', '导出失败：': 'Export failed: ',
+    '已复制元素': 'Element copied', '已导出到：': 'Exported to: ', '导出失败：': 'Export failed: ', '正在导出…': 'Exporting…',
+    '正在导入…': 'Importing…', '导入失败：': 'Import failed: ', '已导入：': 'Imported: ', '缺少媒体文件：': 'missing media files: ',
+    '未找到可导入的演示文稿（ZIP / HTML 导出或 JSON）': 'No deck found to import (ZIP / HTML export or JSON)',
+    '删除演示文稿 “{name}”？此操作无法撤销。': 'Delete deck “{name}”? This cannot be undone.',
     '新演示文稿名称（字母、数字、中文、- 或 _）': 'New deck name (letters, digits, Chinese, - or _)',
     '名称只能包含字母、数字、中文、- 或 _': 'Names may only contain letters, digits, Chinese, - or _'
   };
